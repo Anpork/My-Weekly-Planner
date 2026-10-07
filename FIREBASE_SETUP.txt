@@ -1,0 +1,8 @@
+1. Put my_weekly_planner_REBUILT.html on your GitHub Pages site as index.html (or rename it to index.html).
+2. Upload firebase-messaging-sw.js to the same folder/root as index.html.
+3. In index.html, replace PASTE_YOUR_FIREBASE_VAPID_KEY_HERE with the Web Push certificate key from Firebase Console > Project settings > Cloud Messaging > Web Push certificates.
+4. Deploy to GitHub Pages.
+5. Open the live site, click Enable Notifications, and allow notifications.
+6. Firebase Console can then be used to send a test message to the registered device.
+
+Important: this enables background push reception. Automatic per-activity scheduled reminders still need a sender/backend; we can add that next.
