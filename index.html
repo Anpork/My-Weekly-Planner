@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My Weekly Planner</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b1020;color:#f5f7ff;font-family:system-ui,-apple-system,Segoe UI,sans-serif}.app{max-width:1050px;margin:auto;padding:16px}h1{margin:0;font-size:28px}.muted{color:#9ca8c7}.card{background:#131a2e;border:1px solid #28334f;border-radius:18px;padding:16px;margin:12px 0}.daynav{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.day{border:1px solid #33405f;background:#0e1528;color:#dbe2f5;border-radius:12px;padding:12px 4px;font-weight:900;cursor:pointer}.day.active{background:#5865f2;border-color:#7c88ff;color:#fff}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.lesson{display:grid;grid-template-columns:100px 1fr;gap:10px;background:#0e1528;border-radius:10px;padding:10px;margin:7px 0}.time{color:#8f9bbb;font-size:12px}.subject{font-weight:800}input,select{width:100%;padding:12px;border-radius:10px;border:1px solid #33405f;background:#0e1528;color:#fff}form{display:grid;gap:9px}.row{display:grid;grid-template-columns:1fr 130px;gap:9px}.add{border:0;border-radius:11px;padding:13px;background:#5865f2;color:white;font-weight:900;cursor:pointer}.presets{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:8px}.preset{padding:9px 4px;border:1px solid #33405f;background:#0e1528;color:#dbe2f5;border-radius:9px;cursor:pointer}.task{display:flex;justify-content:space-between;align-items:center;background:#0e1528;border:1px solid #28334f;border-radius:11px;padding:12px;margin:7px 0}.del{border:0;background:none;color:#aab3ca;font-size:18px;cursor:pointer}.free{margin-top:12px;padding:12px;background:#101a2d;border-radius:12px}.empty{padding:20px;text-align:center;color:#7f8aa5;border:1px dashed #33405f;border-radius:12px}@media(max-width:700px){.daynav{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:1fr}.presets{grid-template-columns:repeat(2,1fr)}.app{padding:12px}}
+</style></head><body><div class="app">
+<h1>📅 My Weekly Planner</h1><div class="muted">School + homework + F1 + friends + gaming — everything.</div>
+<div class="card"><h3>🔔 Notifications</h3><div class="muted" id="pushStatus">Notifications are not enabled yet.</div><button class="add" type="button" id="enablePush">Enable Notifications</button></div>
+<div class="card"><h3>Choose a day</h3><div id="dayNav" class="daynav"></div></div>
+<div class="grid"><div class="card"><h2 id="title"></h2><div id="meta" class="muted"></div><div id="school"></div><div class="free"><div class="muted">FREE TIME LEFT</div><b id="free"></b></div></div>
+<div class="card"><h3>Add something</h3><form id="form"><label>DAY<select id="day"></select></label><label>WHAT DO YOU HAVE?<input id="name" required placeholder="Maths homework / Watch F1 / Friends"></label><div class="row"><label>DURATION (MIN)<input id="duration" type="number" min="1" value="60" required></label><label>PRIORITY<select id="priority"><option>High</option><option selected>Medium</option><option>Low</option></select></label></div><button class="add">＋ ADD ACTIVITY</button></form><div class="presets"><button type="button" class="preset" data-n="Maths homework" data-d="60">➗ Maths</button><button type="button" class="preset" data-n="Watch F1" data-d="120">🏎️ F1</button><button type="button" class="preset" data-n="Friends" data-d="120">👥 Friends</button><button type="button" class="preset" data-n="Gaming" data-d="90">🎮 Gaming</button></div></div></div>
+<div class="card"><h3>What I Have — <span id="taskTitle"></span></h3><div id="tasks"></div></div></div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+import { getMessaging, getToken, onMessage, isSupported } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-messaging.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCA-QlptBTRhWMI-2YrmvAsjyFqkuur_ps",
+  authDomain: "my-weekly-planner-c0d78.firebaseapp.com",
+  projectId: "my-weekly-planner-c0d78",
+  storageBucket: "my-weekly-planner-c0d78.firebasestorage.app",
+  messagingSenderId: "663703597386",
+  appId: "1:663703597386:web:a7b01ad5d3896370f2d1b3"
+};
+
+// Paste the Web Push certificate key from Firebase Console here.
+const VAPID_KEY = "BB61JXSw-Xw5sueVam9cQfPjtkLhdNWqDlJdRKAYkZQA6mXijJtm_m7I3VlSiNYdIdVsNo3vjtlbg3w5qL6Aff0";
+
+const app = initializeApp(firebaseConfig);
+const pushStatus = document.getElementById("pushStatus");
+const enablePush = document.getElementById("enablePush");
+
+async function enablePlannerNotifications() {
+  if (!(await isSupported())) {
+    pushStatus.textContent = "This browser does not support Firebase web push.";
+    return;
+  }
+  if (!('Notification' in window)) {
+    pushStatus.textContent = "Notifications are not supported here.";
+    return;
+  }
+  if (VAPID_KEY === "BB61JXSw-Xw5sueVam9cQfPjtkLhdNWqDlJdRKAYkZQA6mXijJtm_m7I3VlSiNYdIdVsNo3vjtlbg3w5qL6Aff0") {
+    pushStatus.textContent = "Add your Firebase Web Push certificate key to the code first.";
+    return;
+  }
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") {
+    pushStatus.textContent = "Notification permission was not granted.";
+    return;
+  }
+  const registration = await navigator.serviceWorker.register("./firebase-messaging-sw.js");
+  const messaging = getMessaging(app);
+  const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
+  if (!token) throw new Error("Firebase did not return a notification token.");
+  localStorage.setItem("firebaseMessagingToken", token);
+  pushStatus.textContent = "✅ Notifications are enabled on this device.";
+  console.log("Firebase notification token:", token);
+  onMessage(messaging, payload => {
+    console.log("Foreground notification:", payload);
+  });
+}
+
+enablePush.addEventListener("click", async () => {
+  enablePush.disabled = true;
+  try { await enablePlannerNotifications(); }
+  catch (err) { console.error(err); pushStatus.textContent = "Could not enable notifications: " + (err?.message || err); }
+  finally { enablePush.disabled = false; }
+});
+</script>
+<script>
+const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const PERIODS=['08:30–09:15','09:15–10:00','10:15–11:00','11:00–11:45','12:00–12:40','12:40–13:20','13:40–14:20','14:20–15:00'];
+const SCHEDULE={
+Monday:['ΘΡΗΣΚΕΥΤΙΚΑ','ΦΥΣΙΚΗ ΑΓΩΓΗ','ΑΓΓΛΙΚΑ','ΑΓΓΛΙΚΑ','ΜΑΘΗΜΑΤΙΚΑ','ΠΛΗΡΟΦΟΡΙΚΗ','ΚΠΑ','ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ'],
+Tuesday:['ΝΕΟΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ','ΝΕΟΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ','ΦΥΣΙΚΗ ΑΓΩΓΗ','ΧΗΜΕΙΑ','ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΑ ΚΕΙΜΕΝΑ ΑΠΟ ΜΕΤΑΦΡΑΣΗ','ΟΙΚΟΝΟΜΙΚΑ','ΙΣΤΟΡΙΑ','ΦΥΣΙΚΗ'],
+Wednesday:['ΘΡΗΣΚΕΥΤΙΚΑ','ΜΑΘΗΜΑΤΙΚΑ','ΜΑΘΗΜΑΤΙΚΑ','ΤΕΧΝΟΛΟΓΙΑ','ΙΣΤΟΡΙΑ','ΦΥΣΙΚΗ','ΑΓΓΛΙΚΑ','ΑΓΓΛΙΚΑ'],
+Thursday:['ΝΕΟΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ','ΜΑΘΗΜΑΤΙΚΑ','ΒΙΟΛΟΓΙΑ','ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ','ΙΣΤΟΡΙΑ','ΦΥΣΙΚΗ','ΚΠΑ','ΜΟΥΣΙΚΗ'],
+Friday:['ΝΕΟΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ','ΕΡΓΑΣΤΗΡΙΟ ΔΕΞΙΟΤΗΤΩΝ','ΜΑΘΗΜΑΤΙΚΑ','ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ','ΚΠΑ','ΕΙΚΑΣΤΙΚΑ','Β΄ ΞΕΝΗ ΓΛΩΣΣΑ','Β΄ ΞΕΝΗ ΓΛΩΣΣΑ']};
+const KEY='weekly_planner_clean_v1';let selected=0,tasks=[];try{tasks=JSON.parse(localStorage.getItem(KEY)||'[]');if(!Array.isArray(tasks))tasks=[]}catch(e){tasks=[]}
+const nav=document.getElementById('dayNav'),day=document.getElementById('day'),form=document.getElementById('form'),nameInput=document.getElementById('name'),duration=document.getElementById('duration'),priority=document.getElementById('priority');
+function save(){try{localStorage.setItem(KEY,JSON.stringify(tasks))}catch(e){}}function fmt(n){n=Math.max(0,Math.round(n));let h=Math.floor(n/60),m=n%60;return h?(m?h+'h '+m+'m':h+'h'):m+'m'}
+function selectDay(i,scroll=true){selected=Number(i);day.value=String(selected);render();if(scroll)document.querySelector('.grid').scrollIntoView({behavior:'smooth',block:'start'})}
+function render(){nav.innerHTML='';DAYS.forEach((d,i)=>{const b=document.createElement('button');b.type='button';b.className='day'+(i===selected?' active':'');b.textContent=d.slice(0,3).toUpperCase();b.title=d;b.addEventListener('click',()=>selectDay(i));nav.appendChild(b)});day.innerHTML='';DAYS.forEach((d,i)=>{let o=document.createElement('option');o.value=i;o.textContent=d;day.appendChild(o)});day.value=String(selected);const d=DAYS[selected];document.getElementById('title').textContent=d;document.getElementById('taskTitle').textContent=d;document.getElementById('meta').textContent=selected<5?'School day • ends 15:00':'Weekend • no school';const school=document.getElementById('school');school.innerHTML='';if(selected<5){SCHEDULE[d].forEach((s,i)=>{const x=document.createElement('div');x.className='lesson';const t=document.createElement('div');t.className='time';t.textContent=PERIODS[i];const q=document.createElement('div');q.className='subject';q.textContent=s;x.append(t,q);school.appendChild(x)})}else{const x=document.createElement('div');x.className='empty';x.textContent='No school today 🎉';school.appendChild(x)}const total=selected<5?420:1440,used=tasks.filter(t=>t.day===selected).reduce((a,t)=>a+Number(t.duration),0);document.getElementById('free').textContent=fmt(total-used);const box=document.getElementById('tasks');box.innerHTML='';const list=tasks.map((t,i)=>({...t,index:i})).filter(t=>t.day===selected);if(!list.length){const e=document.createElement('div');e.className='empty';e.textContent='Nothing added yet.';box.appendChild(e)}list.forEach(t=>{const x=document.createElement('div');x.className='task';const info=document.createElement('div');const a=document.createElement('b');a.textContent=t.name;const z=document.createElement('div');z.className='muted';z.textContent=fmt(t.duration)+' • '+t.priority+' priority';info.append(a,z);const del=document.createElement('button');del.className='del';del.type='button';del.textContent='✕';del.addEventListener('click',()=>{tasks.splice(t.index,1);save();render()});x.append(info,del);box.appendChild(x)})}
+day.addEventListener('change',()=>selectDay(day.value));form.addEventListener('submit',e=>{e.preventDefault();const n=nameInput.value.trim();if(!n)return;tasks.push({day:Number(day.value),name:n,duration:Math.max(1,Number(duration.value)||1),priority:priority.value,id:Date.now()+Math.random()});save();selected=Number(day.value);form.reset();duration.value=60;priority.value='Medium';render();document.getElementById('tasks').scrollIntoView({behavior:'smooth',block:'start'})});document.querySelectorAll('.preset').forEach(b=>b.addEventListener('click',()=>{nameInput.value=b.dataset.n;duration.value=b.dataset.d;nameInput.focus()}));render();
+</script></body></html>
