@@ -432,6 +432,34 @@ select option{
     padding:10px 0;
 }
 
+/* Firebase status */
+.firebase-status{
+    position:fixed;
+    top:15px;
+    left:50%;
+    transform:translateX(-50%);
+    padding:8px 14px;
+    border-radius:999px;
+    background:rgba(34,197,94,.15);
+    border:1px solid rgba(34,197,94,.3);
+    color:#86efac;
+    font-size:12px;
+    z-index:200;
+    opacity:0;
+    transition:.3s;
+    pointer-events:none;
+}
+
+.firebase-status.show{
+    opacity:1;
+}
+
+.firebase-status.offline{
+    background:rgba(234,179,8,.15);
+    border-color:rgba(234,179,8,.3);
+    color:#fde68a;
+}
+
 @media(max-width:900px){
 
     .stats{
@@ -480,6 +508,10 @@ select option{
 </head>
 
 <body>
+
+<div id="firebaseStatus" class="firebase-status">
+    🔥 Firebase connected
+</div>
 
 <div class="container">
 
@@ -642,52 +674,39 @@ select option{
 
     <div class="quick-buttons">
 
-        <button
-            class="quick-btn"
+        <button class="quick-btn"
             onclick="quickAdd('👥 Friends')">
-
             👥 Friends
-
         </button>
 
-        <button
-            class="quick-btn"
+        <button class="quick-btn"
             onclick="quickAdd('🎮 Gaming')">
-
             🎮 Gaming
-
         </button>
 
-        <button
-            class="quick-btn"
+        <button class="quick-btn"
             onclick="quickAdd('🏎️ Watch F1')">
-
             🏎️ Watch F1
-
         </button>
 
-        <button
-            class="quick-btn"
+        <button class="quick-btn"
             onclick="quickAdd('🎾 Play Tennis')">
-
             🎾 Play Tennis
-
         </button>
 
-        <button
-            class="quick-btn"
+        <button class="quick-btn"
             onclick="quickAdd('📐 Mathematics After School')">
-
             📐 Mathematics After School
-
         </button>
 
-        <button
-            class="quick-btn"
+        <button class="quick-btn"
             onclick="quickAdd('🇬🇧 English After School')">
-
             🇬🇧 English After School
+        </button>
 
+        <button class="quick-btn"
+            onclick="quickAdd('📚 Homework')">
+            📚 Homework
         </button>
 
     </div>
@@ -702,54 +721,26 @@ select option{
     <div class="sleep-grid">
 
         <div>
-
             <label>Bedtime</label>
-
-            <input
-                id="sleepStart"
-                type="time">
-
+            <input id="sleepStart" type="time">
         </div>
 
         <div>
-
             <label>Wake-up</label>
-
-            <input
-                id="sleepEnd"
-                type="time">
-
+            <input id="sleepEnd" type="time">
         </div>
 
         <div>
-
             <label>Bedtime reminder</label>
 
             <select id="sleepReminder">
 
-                <option value="0">
-                    🔕 No reminder
-                </option>
-
-                <option value="5">
-                    🔔 5 min before
-                </option>
-
-                <option value="10">
-                    🔔 10 min before
-                </option>
-
-                <option value="15">
-                    🔔 15 min before
-                </option>
-
-                <option value="30">
-                    🔔 30 min before
-                </option>
-
-                <option value="60">
-                    🔔 1 hour before
-                </option>
+                <option value="0">🔕 No reminder</option>
+                <option value="5">🔔 5 min before</option>
+                <option value="10">🔔 10 min before</option>
+                <option value="15">🔔 15 min before</option>
+                <option value="30">🔔 30 min before</option>
+                <option value="60">🔔 1 hour before</option>
 
             </select>
 
@@ -848,17 +839,9 @@ select option{
 
         <select id="editPriority">
 
-            <option value="red">
-                🔴 Urgent
-            </option>
-
-            <option value="yellow">
-                🟡 Not Important
-            </option>
-
-            <option value="green">
-                🟢 Mild
-            </option>
+            <option value="red">🔴 Urgent</option>
+            <option value="yellow">🟡 Not Important</option>
+            <option value="green">🟢 Mild</option>
 
         </select>
 
@@ -866,29 +849,12 @@ select option{
 
         <select id="editReminder">
 
-            <option value="0">
-                🔕 No reminder
-            </option>
-
-            <option value="1">
-                🔔 At start
-            </option>
-
-            <option value="5">
-                🔔 5 min before
-            </option>
-
-            <option value="10">
-                🔔 10 min before
-            </option>
-
-            <option value="15">
-                🔔 15 min before
-            </option>
-
-            <option value="30">
-                🔔 30 min before
-            </option>
+            <option value="0">🔕 No reminder</option>
+            <option value="1">🔔 At start</option>
+            <option value="5">🔔 5 min before</option>
+            <option value="10">🔔 10 min before</option>
+            <option value="15">🔔 15 min before</option>
+            <option value="30">🔔 30 min before</option>
 
         </select>
 
@@ -897,17 +863,13 @@ select option{
             <button
                 class="primary-btn"
                 onclick="saveEdit()">
-
                 Save
-
             </button>
 
             <button
                 class="small-btn"
                 onclick="closeEdit()">
-
                 Cancel
-
             </button>
 
         </div>
@@ -923,7 +885,226 @@ select option{
 </div>
 
 
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/11.0.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore-compat.js"></script>
+
 <script>
+
+/* =========================================================
+   FIREBASE CONFIG
+   ========================================================= */
+
+const firebaseConfig = {
+    apiKey: "AIzaSyCA-QlptBTRhWMI-2YrmvAsjyFqkuur_ps",
+    authDomain: "my-weekly-planner-c0d78.firebaseapp.com",
+    projectId: "my-weekly-planner-c0d78",
+    storageBucket: "my-weekly-planner-c0d78.firebasestorage.app",
+    messagingSenderId: "663703597386",
+    appId: "1:663703597386:web:a7b01ad5d3896370f2d1b3"
+};
+
+let firebaseReady = false;
+let db = null;
+
+try {
+
+    firebase.initializeApp(firebaseConfig);
+
+    db = firebase.firestore();
+
+    firebaseReady = true;
+
+    console.log("🔥 Firebase initialized");
+
+} catch(error) {
+
+    console.error(
+        "Firebase initialization failed:",
+        error
+    );
+
+}
+
+
+/* =========================================================
+   FIREBASE STATUS
+   ========================================================= */
+
+function showFirebaseStatus(message,offline=false){
+
+    const status =
+        document.getElementById(
+            "firebaseStatus"
+        );
+
+    status.textContent = message;
+
+    status.classList.toggle(
+        "offline",
+        offline
+    );
+
+    status.classList.add("show");
+
+    setTimeout(
+        ()=>{
+            status.classList.remove("show");
+        },
+        2500
+    );
+
+}
+
+
+/* =========================================================
+   FIRESTORE
+   ========================================================= */
+
+const plannerDocument =
+    "weeklyPlanner/data";
+
+
+async function loadFirebaseData(){
+
+    if(!firebaseReady || !db){
+
+        showFirebaseStatus(
+            "⚠️ Using local storage",
+            true
+        );
+
+        return;
+
+    }
+
+    try {
+
+        const snapshot =
+            await db
+                .collection("weeklyPlanner")
+                .doc("data")
+                .get();
+
+        if(snapshot.exists){
+
+            const data =
+                snapshot.data();
+
+            if(data.activities){
+
+                activities =
+                    data.activities;
+
+                localStorage.setItem(
+                    "myWeeklyPlannerActivities",
+                    JSON.stringify(
+                        activities
+                    )
+                );
+
+            }
+
+            if(data.sleepRoutine){
+
+                sleepRoutine =
+                    data.sleepRoutine;
+
+                localStorage.setItem(
+                    "myWeeklyPlannerSleep",
+                    JSON.stringify(
+                        sleepRoutine
+                    )
+                );
+
+            }
+
+            console.log(
+                "🔥 Planner loaded from Firebase"
+            );
+
+        } else {
+
+            await saveFirebaseData();
+
+            console.log(
+                "🔥 Created planner in Firebase"
+            );
+
+        }
+
+        render();
+
+        showFirebaseStatus(
+            "🔥 Firebase synced"
+        );
+
+    } catch(error){
+
+        console.error(
+            "Firebase load failed:",
+            error
+        );
+
+        showFirebaseStatus(
+            "⚠️ Firebase unavailable — using local data",
+            true
+        );
+
+    }
+
+}
+
+
+async function saveFirebaseData(){
+
+    if(!firebaseReady || !db)
+        return;
+
+    try {
+
+        await db
+            .collection("weeklyPlanner")
+            .doc("data")
+            .set({
+
+                activities:activities,
+                sleepRoutine:sleepRoutine,
+                updatedAt:
+                    firebase.firestore
+                    .FieldValue
+                    .serverTimestamp()
+
+            });
+
+        console.log(
+            "🔥 Planner saved to Firebase"
+        );
+
+        showFirebaseStatus(
+            "🔥 Saved to Firebase"
+        );
+
+    } catch(error){
+
+        console.error(
+            "Firebase save failed:",
+            error
+        );
+
+        showFirebaseStatus(
+            "⚠️ Saved locally",
+            true
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   PLANNER
+   ========================================================= */
 
 const days = [
     "Monday",
@@ -1071,6 +1252,8 @@ function saveData(){
         JSON.stringify(activities)
     );
 
+    saveFirebaseData();
+
 }
 
 
@@ -1080,6 +1263,8 @@ function saveSleepData(){
         "myWeeklyPlannerSleep",
         JSON.stringify(sleepRoutine)
     );
+
+    saveFirebaseData();
 
 }
 
@@ -1332,6 +1517,10 @@ function saveEdit(){
     if(editIndex === null)
         return;
 
+    const oldCreated =
+        activities[selectedDay]
+        [editIndex].created;
+
     activities[selectedDay][editIndex] = {
 
         name:
@@ -1362,8 +1551,7 @@ function saveEdit(){
             ),
 
         created:
-            activities[selectedDay]
-            [editIndex].created
+            oldCreated
 
     };
 
@@ -2420,6 +2608,10 @@ function escapeHTML(text){
 }
 
 
+/* =========================================================
+   STARTUP
+   ========================================================= */
+
 function render(){
 
     createDayButtons();
@@ -2446,6 +2638,14 @@ function render(){
 loadTheme();
 
 render();
+
+
+/*
+   First show the local version immediately,
+   then Firebase replaces it with the synced data.
+*/
+
+loadFirebaseData();
 
 
 setInterval(
