@@ -623,11 +623,12 @@ select option{
             </option>
 
             <option value="yellow">
-                🟡 Not Important
+                🟡 Mild
             </option>
 
             <option value="green">
-                🟢 Mild
+                🟢 Not important
+        
             </option>
 
         </select>
@@ -840,8 +841,8 @@ select option{
         <select id="editPriority">
 
             <option value="red">🔴 Urgent</option>
-            <option value="yellow">🟡 Not Important</option>
-            <option value="green">🟢 Mild</option>
+            <option value="yellow">🟡 Mild</option>
+            <option value="green">🟢 Not important</option>
 
         </select>
 
@@ -1127,7 +1128,7 @@ const schoolSchedule = {
         "ΜΑΘΗΜΑΤΙΚΑ",
         "ΠΛΗΡΟΦΟΡΙΚΗ",
         "ΚΠΑ",
-        "ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ"
+        "ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΗ ΛΟΓΟΤΕΧΝΙΑ"
     ],
 
     Tuesday:[
@@ -1135,7 +1136,7 @@ const schoolSchedule = {
         "ΝΕΟΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ",
         "ΦΥΣΙΚΗ ΑΓΩΓΗ",
         "ΧΗΜΕΙΑ",
-        "ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΑ ΚΕΙΜΕΝΑ ΑΠΟ ΜΕΤΑΦΡΑΣΗ",
+        "ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ",
         "ΟΙΚΟΝΟΜΙΚΑ",
         "ΙΣΤΟΡΙΑ",
         "ΦΥΣΙΚΗ"
@@ -1153,25 +1154,25 @@ const schoolSchedule = {
     ],
 
     Thursday:[
-        "ΝΕΟΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ",
+        "ΝΕΟΕΛΛΗΝΙΚΗ ΛΟΓΟΤΕΧΝΙΑ",
         "ΜΑΘΗΜΑΤΙΚΑ",
         "ΒΙΟΛΟΓΙΑ",
-        "ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ",
-        "ΙΣΤΟΡΙΑ",
-        "ΦΥΣΙΚΗ",
+        "ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΗ ΛΟΓΟΤΕΧΝΙΑ",
+        "ΑΓΓΛΙΚΑ",
         "ΚΠΑ",
-        "ΜΟΥΣΙΚΗ"
+        "ΜΟΥΣΙΚΗ",
+        "ΟΜΙΛΟΣ ΤΕΧΝΟΛΟΓΙΑΣ"
     ],
 
     Friday:[
-        "ΝΕΟΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ",
+        "ΝΕΟΕΛΛΗΝΙΚΗ ΛΟΓΟΤΕΧΝΙΑ",
         "ΕΡΓΑΣΤΗΡΙΟ ΔΕΞΙΟΤΗΤΩΝ",
         "ΜΑΘΗΜΑΤΙΚΑ",
         "ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ",
         "ΚΠΑ",
         "ΕΙΚΑΣΤΙΚΑ",
-        "Β΄ ΞΕΝΗ ΓΛΩΣΣΑ",
-        "Β΄ ΞΕΝΗ ΓΛΩΣΣΑ"
+        "ΙΣΠΑΝΙΚΑ",
+        "ΙΣΠΑΝΙΚΑ"
     ],
 
     Saturday:[],
@@ -1852,9 +1853,9 @@ function priorityLabel(priority){
         return "🔴 Urgent";
 
     if(priority === "yellow")
-        return "🟡 Not Important";
+        return "🟡 Mild";
 
-    return "🟢 Mild";
+    return "🟢 Not Important";
 
 }
 
