@@ -1,84 +1,2494 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My Weekly Planner</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>My Weekly Planner</title>
+
+<link rel="manifest" href="./manifest.webmanifest">
+
+<meta name="theme-color" content="#6366f1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="My Planner">
+
 <style>
-*{box-sizing:border-box}body{margin:0;background:#0b1020;color:#f5f7ff;font-family:system-ui,-apple-system,Segoe UI,sans-serif}.app{max-width:1050px;margin:auto;padding:16px}h1{margin:0;font-size:28px}.muted{color:#9ca8c7}.card{background:#131a2e;border:1px solid #28334f;border-radius:18px;padding:16px;margin:12px 0}.daynav{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.day{border:1px solid #33405f;background:#0e1528;color:#dbe2f5;border-radius:12px;padding:12px 4px;font-weight:900;cursor:pointer}.day.active{background:#5865f2;border-color:#7c88ff;color:#fff}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.lesson{display:grid;grid-template-columns:100px 1fr;gap:10px;background:#0e1528;border-radius:10px;padding:10px;margin:7px 0}.time{color:#8f9bbb;font-size:12px}.subject{font-weight:800}input,select{width:100%;padding:12px;border-radius:10px;border:1px solid #33405f;background:#0e1528;color:#fff}form{display:grid;gap:9px}.row{display:grid;grid-template-columns:1fr 130px;gap:9px}.add{border:0;border-radius:11px;padding:13px;background:#5865f2;color:white;font-weight:900;cursor:pointer}.presets{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:8px}.preset{padding:9px 4px;border:1px solid #33405f;background:#0e1528;color:#dbe2f5;border-radius:9px;cursor:pointer}.task{display:flex;justify-content:space-between;align-items:center;background:#0e1528;border:1px solid #28334f;border-radius:11px;padding:12px;margin:7px 0}.del{border:0;background:none;color:#aab3ca;font-size:18px;cursor:pointer}.free{margin-top:12px;padding:12px;background:#101a2d;border-radius:12px}.empty{padding:20px;text-align:center;color:#7f8aa5;border:1px dashed #33405f;border-radius:12px}@media(max-width:700px){.daynav{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:1fr}.presets{grid-template-columns:repeat(2,1fr)}.app{padding:12px}}
-</style></head><body><div class="app">
-<h1>📅 My Weekly Planner</h1><div class="muted">School + homework + F1 + friends + gaming — everything.</div>
-<div class="card"><h3>🔔 Notifications</h3><div class="muted" id="pushStatus">Notifications are not enabled yet.</div><button class="add" type="button" id="enablePush">Enable Notifications</button></div>
-<div class="card"><h3>Choose a day</h3><div id="dayNav" class="daynav"></div></div>
-<div class="grid"><div class="card"><h2 id="title"></h2><div id="meta" class="muted"></div><div id="school"></div><div class="free"><div class="muted">FREE TIME LEFT</div><b id="free"></b></div></div>
-<div class="card"><h3>Add something</h3><form id="form"><label>DAY<select id="day"></select></label><label>WHAT DO YOU HAVE?<input id="name" required placeholder="Maths homework / Watch F1 / Friends"></label><div class="row"><label>DURATION (MIN)<input id="duration" type="number" min="1" value="60" required></label><label>PRIORITY<select id="priority"><option>High</option><option selected>Medium</option><option>Low</option></select></label></div><button class="add">＋ ADD ACTIVITY</button></form><div class="presets"><button type="button" class="preset" data-n="Maths homework" data-d="60">➗ Maths</button><button type="button" class="preset" data-n="Watch F1" data-d="120">🏎️ F1</button><button type="button" class="preset" data-n="Friends" data-d="120">👥 Friends</button><button type="button" class="preset" data-n="Gaming" data-d="90">🎮 Gaming</button></div></div></div>
-<div class="card"><h3>What I Have — <span id="taskTitle"></span></h3><div id="tasks"></div></div></div>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-import { getMessaging, getToken, onMessage, isSupported } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-messaging.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCA-QlptBTRhWMI-2YrmvAsjyFqkuur_ps",
-  authDomain: "my-weekly-planner-c0d78.firebaseapp.com",
-  projectId: "my-weekly-planner-c0d78",
-  storageBucket: "my-weekly-planner-c0d78.firebasestorage.app",
-  messagingSenderId: "663703597386",
-  appId: "1:663703597386:web:a7b01ad5d3896370f2d1b3"
-};
-
-// Paste the Web Push certificate key from Firebase Console here.
-const VAPID_KEY = "BB61JXSw-Xw5sueVam9cQfPjtkLhdNWqDlJdRKAYkZQA6mXijJtm_m7I3VlSiNYdIdVsNo3vjtlbg3w5qL6Aff0";
-
-const app = initializeApp(firebaseConfig);
-const pushStatus = document.getElementById("pushStatus");
-const enablePush = document.getElementById("enablePush");
-
-async function enablePlannerNotifications() {
-  if (!(await isSupported())) {
-    pushStatus.textContent = "This browser does not support Firebase web push.";
-    return;
-  }
-  if (!('Notification' in window)) {
-    pushStatus.textContent = "Notifications are not supported here.";
-    return;
-  }
-  if (VAPID_KEY === "BB61JXSw-Xw5sueVam9cQfPjtkLhdNWqDlJdRKAYkZQA6mXijJtm_m7I3VlSiNYdIdVsNo3vjtlbg3w5qL6Aff0") {
-    pushStatus.textContent = "Add your Firebase Web Push certificate key to the code first.";
-    return;
-  }
-  const permission = await Notification.requestPermission();
-  if (permission !== "granted") {
-    pushStatus.textContent = "Notification permission was not granted.";
-    return;
-  }
-  const registration = await navigator.serviceWorker.register("./firebase-messaging-sw.js");
-  const messaging = getMessaging(app);
-  const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
-  if (!token) throw new Error("Firebase did not return a notification token.");
-  localStorage.setItem("firebaseMessagingToken", token);
-  pushStatus.textContent = "✅ Notifications are enabled on this device.";
-  console.log("Firebase notification token:", token);
-  onMessage(messaging, payload => {
-    console.log("Foreground notification:", payload);
-  });
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
 }
 
-enablePush.addEventListener("click", async () => {
-  enablePush.disabled = true;
-  try { await enablePlannerNotifications(); }
-  catch (err) { console.error(err); pushStatus.textContent = "Could not enable notifications: " + (err?.message || err); }
-  finally { enablePush.disabled = false; }
-});
-</script>
+:root{
+    --bg:#090b16;
+    --card:rgba(255,255,255,.07);
+    --card2:rgba(255,255,255,.1);
+    --border:rgba(255,255,255,.12);
+    --text:#f8fafc;
+    --muted:#94a3b8;
+    --primary:#6366f1;
+    --primary2:#8b5cf6;
+    --green:#22c55e;
+    --yellow:#eab308;
+    --red:#ef4444;
+    --shadow:0 20px 60px rgba(0,0,0,.3);
+}
+
+body.light{
+    --bg:#eef2ff;
+    --card:rgba(255,255,255,.72);
+    --card2:rgba(255,255,255,.9);
+    --border:rgba(15,23,42,.1);
+    --text:#111827;
+    --muted:#64748b;
+    --shadow:0 20px 50px rgba(30,41,59,.12);
+}
+
+body{
+    font-family:Arial,Helvetica,sans-serif;
+    background:
+        radial-gradient(circle at top left,rgba(99,102,241,.25),transparent 35%),
+        radial-gradient(circle at bottom right,rgba(139,92,246,.2),transparent 35%),
+        var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    transition:.3s;
+}
+
+.container{
+    width:min(1200px,94%);
+    margin:auto;
+    padding:30px 0 60px;
+}
+
+header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+}
+
+.title h1{
+    font-size:clamp(30px,5vw,50px);
+    background:linear-gradient(90deg,#818cf8,#c084fc);
+    -webkit-background-clip:text;
+    color:transparent;
+}
+
+.title p{
+    color:var(--muted);
+    margin-top:6px;
+}
+
+button{
+    border:0;
+    cursor:pointer;
+    font:inherit;
+}
+
+.theme-btn{
+    width:48px;
+    height:48px;
+    border-radius:15px;
+    background:var(--card);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-size:21px;
+}
+
+.days{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:8px;
+    margin-bottom:20px;
+}
+
+.day-btn{
+    padding:13px 5px;
+    border-radius:15px;
+    background:var(--card);
+    color:var(--muted);
+    border:1px solid var(--border);
+    transition:.2s;
+}
+
+.day-btn:hover{
+    transform:translateY(-2px);
+}
+
+.day-btn.active{
+    background:linear-gradient(135deg,var(--primary),var(--primary2));
+    color:white;
+    box-shadow:0 8px 25px rgba(99,102,241,.35);
+}
+
+.card{
+    background:var(--card);
+    border:1px solid var(--border);
+    backdrop-filter:blur(18px);
+    border-radius:24px;
+    padding:22px;
+    margin-bottom:20px;
+    box-shadow:var(--shadow);
+}
+
+.card h2{
+    margin-bottom:16px;
+}
+
+.stats{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:12px;
+}
+
+.stat{
+    padding:18px;
+    border-radius:18px;
+    background:var(--card2);
+    border:1px solid var(--border);
+}
+
+.stat .emoji{
+    font-size:25px;
+}
+
+.stat .value{
+    font-size:24px;
+    font-weight:bold;
+    margin-top:7px;
+}
+
+.stat .label{
+    color:var(--muted);
+    font-size:13px;
+    margin-top:4px;
+}
+
+.countdown{
+    text-align:center;
+}
+
+.next-name{
+    font-size:25px;
+    font-weight:bold;
+}
+
+.countdown-time{
+    font-size:44px;
+    font-weight:bold;
+    margin-top:8px;
+    background:linear-gradient(90deg,#818cf8,#c084fc);
+    -webkit-background-clip:text;
+    color:transparent;
+}
+
+.form-grid{
+    display:grid;
+    grid-template-columns:2fr 1fr 1fr 1fr 1fr;
+    gap:10px;
+}
+
+input,select{
+    width:100%;
+    padding:13px;
+    border-radius:13px;
+    border:1px solid var(--border);
+    background:var(--card2);
+    color:var(--text);
+    outline:none;
+}
+
+select option{
+    background:#111827;
+    color:white;
+}
+
+.primary-btn{
+    padding:13px 18px;
+    border-radius:13px;
+    background:linear-gradient(135deg,var(--primary),var(--primary2));
+    color:white;
+    font-weight:bold;
+}
+
+.quick-buttons{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:14px;
+}
+
+.quick-btn{
+    padding:9px 13px;
+    border-radius:12px;
+    background:var(--card2);
+    color:var(--text);
+    border:1px solid var(--border);
+    transition:.2s;
+}
+
+.quick-btn:hover{
+    transform:translateY(-2px);
+}
+
+.sleep-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr auto;
+    gap:10px;
+    align-items:end;
+}
+
+.sleep-info{
+    margin-top:15px;
+    padding:15px;
+    border-radius:16px;
+    background:rgba(99,102,241,.12);
+    border:1px solid rgba(99,102,241,.2);
+}
+
+.school-item,
+.activity,
+.timeline-item{
+    display:flex;
+    align-items:center;
+    gap:15px;
+    padding:14px;
+    margin-bottom:9px;
+    border-radius:15px;
+    background:var(--card2);
+    border:1px solid var(--border);
+}
+
+.time{
+    min-width:100px;
+    color:#a5b4fc;
+    font-weight:bold;
+}
+
+.school-number{
+    width:30px;
+    height:30px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    border-radius:50%;
+    background:rgba(99,102,241,.18);
+    color:#a5b4fc;
+}
+
+.activity-info{
+    flex:1;
+}
+
+.activity-name{
+    font-weight:bold;
+}
+
+.activity-meta{
+    color:var(--muted);
+    font-size:13px;
+    margin-top:4px;
+}
+
+.priority{
+    width:12px;
+    height:12px;
+    border-radius:50%;
+}
+
+.priority.red{
+    background:var(--red);
+}
+
+.priority.yellow{
+    background:var(--yellow);
+}
+
+.priority.green{
+    background:var(--green);
+}
+
+.actions{
+    display:flex;
+    gap:6px;
+}
+
+.small-btn{
+    padding:8px 10px;
+    border-radius:10px;
+    background:var(--card);
+    color:var(--text);
+    border:1px solid var(--border);
+}
+
+.timeline-item.sleep{
+    border-left:4px solid #818cf8;
+}
+
+.timeline-item.school{
+    border-left:4px solid #38bdf8;
+}
+
+.timeline-item.activity{
+    border-left:4px solid #a78bfa;
+}
+
+.timeline-label{
+    min-width:75px;
+    font-weight:bold;
+    color:#a5b4fc;
+}
+
+.sleep-badge{
+    padding:5px 8px;
+    border-radius:8px;
+    background:rgba(129,140,248,.15);
+    color:#a5b4fc;
+    font-size:12px;
+}
+
+.week-stats{
+    display:grid;
+    gap:10px;
+}
+
+.week-row{
+    display:grid;
+    grid-template-columns:100px 1fr 100px;
+    gap:10px;
+    align-items:center;
+}
+
+.progress{
+    height:9px;
+    border-radius:20px;
+    background:rgba(255,255,255,.08);
+    overflow:hidden;
+}
+
+.progress div{
+    height:100%;
+    background:linear-gradient(90deg,var(--primary),var(--primary2));
+    border-radius:20px;
+}
+
+.modal{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.65);
+    display:none;
+    justify-content:center;
+    align-items:center;
+    padding:20px;
+    z-index:50;
+}
+
+.modal.show{
+    display:flex;
+}
+
+.modal-box{
+    width:min(500px,100%);
+    background:#151827;
+    border:1px solid var(--border);
+    border-radius:24px;
+    padding:25px;
+}
+
+.modal-box h2{
+    margin-bottom:15px;
+}
+
+.modal-actions{
+    display:flex;
+    gap:10px;
+    margin-top:15px;
+}
+
+.toast{
+    position:fixed;
+    bottom:25px;
+    right:25px;
+    background:#111827;
+    color:white;
+    padding:13px 18px;
+    border-radius:13px;
+    opacity:0;
+    transform:translateY(15px);
+    pointer-events:none;
+    transition:.3s;
+    z-index:100;
+}
+
+.toast.show{
+    opacity:1;
+    transform:translateY(0);
+}
+
+.empty{
+    color:var(--muted);
+    padding:10px 0;
+}
+
+@media(max-width:900px){
+
+    .stats{
+        grid-template-columns:repeat(2,1fr);
+    }
+
+    .form-grid{
+        grid-template-columns:1fr 1fr;
+    }
+
+    .sleep-grid{
+        grid-template-columns:1fr 1fr;
+    }
+}
+
+@media(max-width:650px){
+
+    .days{
+        grid-template-columns:repeat(4,1fr);
+    }
+
+    .stats{
+        grid-template-columns:1fr 1fr;
+    }
+
+    .form-grid,
+    .sleep-grid{
+        grid-template-columns:1fr;
+    }
+
+    .school-item,
+    .activity,
+    .timeline-item{
+        align-items:flex-start;
+    }
+
+    .week-row{
+        grid-template-columns:70px 1fr 70px;
+    }
+
+    .time{
+        min-width:75px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<header>
+
+    <div class="title">
+
+        <h1>My Weekly Planner</h1>
+
+        <p>Plan your week. Stay ahead. 🚀</p>
+
+    </div>
+
+    <button
+        class="theme-btn"
+        onclick="toggleTheme()"
+        id="themeButton">
+        🌙
+    </button>
+
+</header>
+
+
+<div class="days" id="days"></div>
+
+
+<div class="card">
+
+    <h2>📊 Today's Overview</h2>
+
+    <div class="stats">
+
+        <div class="stat">
+            <div class="emoji">🏫</div>
+            <div class="value" id="schoolHours">0h</div>
+            <div class="label">School</div>
+        </div>
+
+        <div class="stat">
+            <div class="emoji">🎯</div>
+            <div class="value" id="activityHours">0h</div>
+            <div class="label">Activities</div>
+        </div>
+
+        <div class="stat">
+            <div class="emoji">😴</div>
+            <div class="value" id="sleepHours">0h</div>
+            <div class="label">Sleep</div>
+        </div>
+
+        <div class="stat">
+            <div class="emoji">🕐</div>
+            <div class="value" id="freeHours">24h</div>
+            <div class="label">Free / Waking</div>
+        </div>
+
+        <div class="stat">
+            <div class="emoji">📋</div>
+            <div class="value" id="activityCount">0</div>
+            <div class="label">Activities</div>
+        </div>
+
+    </div>
+
+</div>
+
+
+<div class="card countdown">
+
+    <h2>⏰ Next Up</h2>
+
+    <div
+        class="next-name"
+        id="nextName">
+        Nothing scheduled
+    </div>
+
+    <div
+        class="countdown-time"
+        id="countdown">
+        --:--:--
+    </div>
+
+</div>
+
+
+<div class="card">
+
+    <h2>➕ Add Activity</h2>
+
+    <div class="form-grid">
+
+        <input
+            id="activityName"
+            placeholder="Activity name">
+
+        <input
+            id="activityStart"
+            type="time">
+
+        <input
+            id="activityEnd"
+            type="time">
+
+        <select id="activityPriority">
+
+            <option value="red">
+                🔴 Urgent
+            </option>
+
+            <option value="yellow">
+                🟡 Not Important
+            </option>
+
+            <option value="green">
+                🟢 Mild
+            </option>
+
+        </select>
+
+        <select id="activityReminder">
+
+            <option value="0">
+                🔕 No reminder
+            </option>
+
+            <option value="1">
+                🔔 At start
+            </option>
+
+            <option value="5">
+                🔔 5 min before
+            </option>
+
+            <option value="10">
+                🔔 10 min before
+            </option>
+
+            <option value="15">
+                🔔 15 min before
+            </option>
+
+            <option value="30">
+                🔔 30 min before
+            </option>
+
+        </select>
+
+    </div>
+
+    <button
+        class="primary-btn"
+        onclick="addActivity()"
+        style="margin-top:10px">
+
+        Add Activity
+
+    </button>
+
+
+    <div class="quick-buttons">
+
+        <button
+            class="quick-btn"
+            onclick="quickAdd('👥 Friends')">
+
+            👥 Friends
+
+        </button>
+
+        <button
+            class="quick-btn"
+            onclick="quickAdd('🎮 Gaming')">
+
+            🎮 Gaming
+
+        </button>
+
+        <button
+            class="quick-btn"
+            onclick="quickAdd('🏎️ Watch F1')">
+
+            🏎️ Watch F1
+
+        </button>
+
+        <button
+            class="quick-btn"
+            onclick="quickAdd('🎾 Play Tennis')">
+
+            🎾 Play Tennis
+
+        </button>
+
+        <button
+            class="quick-btn"
+            onclick="quickAdd('📐 Mathematics After School')">
+
+            📐 Mathematics After School
+
+        </button>
+
+        <button
+            class="quick-btn"
+            onclick="quickAdd('🇬🇧 English After School')">
+
+            🇬🇧 English After School
+
+        </button>
+
+    </div>
+
+</div>
+
+
+<div class="card">
+
+    <h2>😴 Sleep Routine</h2>
+
+    <div class="sleep-grid">
+
+        <div>
+
+            <label>Bedtime</label>
+
+            <input
+                id="sleepStart"
+                type="time">
+
+        </div>
+
+        <div>
+
+            <label>Wake-up</label>
+
+            <input
+                id="sleepEnd"
+                type="time">
+
+        </div>
+
+        <div>
+
+            <label>Bedtime reminder</label>
+
+            <select id="sleepReminder">
+
+                <option value="0">
+                    🔕 No reminder
+                </option>
+
+                <option value="5">
+                    🔔 5 min before
+                </option>
+
+                <option value="10">
+                    🔔 10 min before
+                </option>
+
+                <option value="15">
+                    🔔 15 min before
+                </option>
+
+                <option value="30">
+                    🔔 30 min before
+                </option>
+
+                <option value="60">
+                    🔔 1 hour before
+                </option>
+
+            </select>
+
+        </div>
+
+        <button
+            class="primary-btn"
+            onclick="saveSleepRoutine()">
+
+            Save Sleep
+
+        </button>
+
+    </div>
+
+    <div
+        class="sleep-info"
+        id="sleepInfo">
+
+        No sleep routine set.
+
+    </div>
+
+</div>
+
+
+<div class="card">
+
+    <h2>
+        🏫 School —
+        <span id="schoolDay"></span>
+    </h2>
+
+    <div id="schoolList"></div>
+
+</div>
+
+
+<div class="card">
+
+    <h2>🗓️ Timeline</h2>
+
+    <div id="timeline"></div>
+
+</div>
+
+
+<div class="card">
+
+    <h2>🎯 My Activities</h2>
+
+    <div id="activities"></div>
+
+</div>
+
+
+<div class="card">
+
+    <h2>📊 Weekly Statistics</h2>
+
+    <div
+        class="week-stats"
+        id="weeklyStats">
+    </div>
+
+</div>
+
+</div>
+
+
+<div
+    class="modal"
+    id="editModal">
+
+    <div class="modal-box">
+
+        <h2>✏️ Edit Activity</h2>
+
+        <input
+            id="editName"
+            placeholder="Activity name">
+
+        <br><br>
+
+        <input
+            id="editStart"
+            type="time">
+
+        <br><br>
+
+        <input
+            id="editEnd"
+            type="time">
+
+        <br><br>
+
+        <select id="editPriority">
+
+            <option value="red">
+                🔴 Urgent
+            </option>
+
+            <option value="yellow">
+                🟡 Not Important
+            </option>
+
+            <option value="green">
+                🟢 Mild
+            </option>
+
+        </select>
+
+        <br><br>
+
+        <select id="editReminder">
+
+            <option value="0">
+                🔕 No reminder
+            </option>
+
+            <option value="1">
+                🔔 At start
+            </option>
+
+            <option value="5">
+                🔔 5 min before
+            </option>
+
+            <option value="10">
+                🔔 10 min before
+            </option>
+
+            <option value="15">
+                🔔 15 min before
+            </option>
+
+            <option value="30">
+                🔔 30 min before
+            </option>
+
+        </select>
+
+        <div class="modal-actions">
+
+            <button
+                class="primary-btn"
+                onclick="saveEdit()">
+
+                Save
+
+            </button>
+
+            <button
+                class="small-btn"
+                onclick="closeEdit()">
+
+                Cancel
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<div
+    class="toast"
+    id="toast">
+</div>
+
+
 <script>
-const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-const PERIODS=['08:30–09:15','09:15–10:00','10:15–11:00','11:00–11:45','12:00–12:40','12:40–13:20','13:40–14:20','14:20–15:00'];
-const SCHEDULE={
-Monday:['ΘΡΗΣΚΕΥΤΙΚΑ','ΦΥΣΙΚΗ ΑΓΩΓΗ','ΑΓΓΛΙΚΑ','ΑΓΓΛΙΚΑ','ΜΑΘΗΜΑΤΙΚΑ','ΠΛΗΡΟΦΟΡΙΚΗ','ΚΠΑ','ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ'],
-Tuesday:['ΝΕΟΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ','ΝΕΟΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ','ΦΥΣΙΚΗ ΑΓΩΓΗ','ΧΗΜΕΙΑ','ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΑ ΚΕΙΜΕΝΑ ΑΠΟ ΜΕΤΑΦΡΑΣΗ','ΟΙΚΟΝΟΜΙΚΑ','ΙΣΤΟΡΙΑ','ΦΥΣΙΚΗ'],
-Wednesday:['ΘΡΗΣΚΕΥΤΙΚΑ','ΜΑΘΗΜΑΤΙΚΑ','ΜΑΘΗΜΑΤΙΚΑ','ΤΕΧΝΟΛΟΓΙΑ','ΙΣΤΟΡΙΑ','ΦΥΣΙΚΗ','ΑΓΓΛΙΚΑ','ΑΓΓΛΙΚΑ'],
-Thursday:['ΝΕΟΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ','ΜΑΘΗΜΑΤΙΚΑ','ΒΙΟΛΟΓΙΑ','ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ','ΙΣΤΟΡΙΑ','ΦΥΣΙΚΗ','ΚΠΑ','ΜΟΥΣΙΚΗ'],
-Friday:['ΝΕΟΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ','ΕΡΓΑΣΤΗΡΙΟ ΔΕΞΙΟΤΗΤΩΝ','ΜΑΘΗΜΑΤΙΚΑ','ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ','ΚΠΑ','ΕΙΚΑΣΤΙΚΑ','Β΄ ΞΕΝΗ ΓΛΩΣΣΑ','Β΄ ΞΕΝΗ ΓΛΩΣΣΑ']};
-const KEY='weekly_planner_clean_v1';let selected=0,tasks=[];try{tasks=JSON.parse(localStorage.getItem(KEY)||'[]');if(!Array.isArray(tasks))tasks=[]}catch(e){tasks=[]}
-const nav=document.getElementById('dayNav'),day=document.getElementById('day'),form=document.getElementById('form'),nameInput=document.getElementById('name'),duration=document.getElementById('duration'),priority=document.getElementById('priority');
-function save(){try{localStorage.setItem(KEY,JSON.stringify(tasks))}catch(e){}}function fmt(n){n=Math.max(0,Math.round(n));let h=Math.floor(n/60),m=n%60;return h?(m?h+'h '+m+'m':h+'h'):m+'m'}
-function selectDay(i,scroll=true){selected=Number(i);day.value=String(selected);render();if(scroll)document.querySelector('.grid').scrollIntoView({behavior:'smooth',block:'start'})}
-function render(){nav.innerHTML='';DAYS.forEach((d,i)=>{const b=document.createElement('button');b.type='button';b.className='day'+(i===selected?' active':'');b.textContent=d.slice(0,3).toUpperCase();b.title=d;b.addEventListener('click',()=>selectDay(i));nav.appendChild(b)});day.innerHTML='';DAYS.forEach((d,i)=>{let o=document.createElement('option');o.value=i;o.textContent=d;day.appendChild(o)});day.value=String(selected);const d=DAYS[selected];document.getElementById('title').textContent=d;document.getElementById('taskTitle').textContent=d;document.getElementById('meta').textContent=selected<5?'School day • ends 15:00':'Weekend • no school';const school=document.getElementById('school');school.innerHTML='';if(selected<5){SCHEDULE[d].forEach((s,i)=>{const x=document.createElement('div');x.className='lesson';const t=document.createElement('div');t.className='time';t.textContent=PERIODS[i];const q=document.createElement('div');q.className='subject';q.textContent=s;x.append(t,q);school.appendChild(x)})}else{const x=document.createElement('div');x.className='empty';x.textContent='No school today 🎉';school.appendChild(x)}const total=selected<5?420:1440,used=tasks.filter(t=>t.day===selected).reduce((a,t)=>a+Number(t.duration),0);document.getElementById('free').textContent=fmt(total-used);const box=document.getElementById('tasks');box.innerHTML='';const list=tasks.map((t,i)=>({...t,index:i})).filter(t=>t.day===selected);if(!list.length){const e=document.createElement('div');e.className='empty';e.textContent='Nothing added yet.';box.appendChild(e)}list.forEach(t=>{const x=document.createElement('div');x.className='task';const info=document.createElement('div');const a=document.createElement('b');a.textContent=t.name;const z=document.createElement('div');z.className='muted';z.textContent=fmt(t.duration)+' • '+t.priority+' priority';info.append(a,z);const del=document.createElement('button');del.className='del';del.type='button';del.textContent='✕';del.addEventListener('click',()=>{tasks.splice(t.index,1);save();render()});x.append(info,del);box.appendChild(x)})}
-day.addEventListener('change',()=>selectDay(day.value));form.addEventListener('submit',e=>{e.preventDefault();const n=nameInput.value.trim();if(!n)return;tasks.push({day:Number(day.value),name:n,duration:Math.max(1,Number(duration.value)||1),priority:priority.value,id:Date.now()+Math.random()});save();selected=Number(day.value);form.reset();duration.value=60;priority.value='Medium';render();document.getElementById('tasks').scrollIntoView({behavior:'smooth',block:'start'})});document.querySelectorAll('.preset').forEach(b=>b.addEventListener('click',()=>{nameInput.value=b.dataset.n;duration.value=b.dataset.d;nameInput.focus()}));render();
-</script></body></html>
+
+const days = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday"
+];
+
+
+const schoolSchedule = {
+
+    Monday:[
+        "ΘΡΗΣΚΕΥΤΙΚΑ",
+        "ΦΥΣΙΚΗ ΑΓΩΓΗ",
+        "ΑΓΓΛΙΚΑ",
+        "ΑΓΓΛΙΚΑ",
+        "ΜΑΘΗΜΑΤΙΚΑ",
+        "ΠΛΗΡΟΦΟΡΙΚΗ",
+        "ΚΠΑ",
+        "ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ"
+    ],
+
+    Tuesday:[
+        "ΝΕΟΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ",
+        "ΝΕΟΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ",
+        "ΦΥΣΙΚΗ ΑΓΩΓΗ",
+        "ΧΗΜΕΙΑ",
+        "ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΑ ΚΕΙΜΕΝΑ ΑΠΟ ΜΕΤΑΦΡΑΣΗ",
+        "ΟΙΚΟΝΟΜΙΚΑ",
+        "ΙΣΤΟΡΙΑ",
+        "ΦΥΣΙΚΗ"
+    ],
+
+    Wednesday:[
+        "ΘΡΗΣΚΕΥΤΙΚΑ",
+        "ΜΑΘΗΜΑΤΙΚΑ",
+        "ΜΑΘΗΜΑΤΙΚΑ",
+        "ΤΕΧΝΟΛΟΓΙΑ",
+        "ΙΣΤΟΡΙΑ",
+        "ΦΥΣΙΚΗ",
+        "ΑΓΓΛΙΚΑ",
+        "ΑΓΓΛΙΚΑ"
+    ],
+
+    Thursday:[
+        "ΝΕΟΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ",
+        "ΜΑΘΗΜΑΤΙΚΑ",
+        "ΒΙΟΛΟΓΙΑ",
+        "ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ",
+        "ΙΣΤΟΡΙΑ",
+        "ΦΥΣΙΚΗ",
+        "ΚΠΑ",
+        "ΜΟΥΣΙΚΗ"
+    ],
+
+    Friday:[
+        "ΝΕΟΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ",
+        "ΕΡΓΑΣΤΗΡΙΟ ΔΕΞΙΟΤΗΤΩΝ",
+        "ΜΑΘΗΜΑΤΙΚΑ",
+        "ΑΡΧΑΙΑ ΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ",
+        "ΚΠΑ",
+        "ΕΙΚΑΣΤΙΚΑ",
+        "Β΄ ΞΕΝΗ ΓΛΩΣΣΑ",
+        "Β΄ ΞΕΝΗ ΓΛΩΣΣΑ"
+    ],
+
+    Saturday:[],
+    Sunday:[]
+
+};
+
+
+const lessonTimes = [
+
+    "08:30–09:15",
+    "09:15–10:00",
+    "10:15–11:00",
+    "11:00–11:45",
+    "12:00–12:40",
+    "12:40–13:20",
+    "13:40–14:20",
+    "14:20–15:00"
+
+];
+
+
+let selectedDay =
+    getTodayName();
+
+
+let activities =
+    JSON.parse(
+        localStorage.getItem(
+            "myWeeklyPlannerActivities"
+        )
+    ) || {};
+
+
+let sleepRoutine =
+    JSON.parse(
+        localStorage.getItem(
+            "myWeeklyPlannerSleep"
+        )
+    ) || {};
+
+
+let editIndex = null;
+
+
+let remindedActivities =
+    JSON.parse(
+        localStorage.getItem(
+            "myWeeklyPlannerReminded"
+        )
+    ) || {};
+
+
+function getTodayName(){
+
+    const d =
+        new Date().getDay();
+
+    return days[
+        d === 0 ? 6 : d - 1
+    ];
+
+}
+
+
+function ensureDay(day){
+
+    if(!activities[day])
+        activities[day] = [];
+
+}
+
+
+function saveData(){
+
+    localStorage.setItem(
+        "myWeeklyPlannerActivities",
+        JSON.stringify(activities)
+    );
+
+}
+
+
+function saveSleepData(){
+
+    localStorage.setItem(
+        "myWeeklyPlannerSleep",
+        JSON.stringify(sleepRoutine)
+    );
+
+}
+
+
+function timeToMinutes(time){
+
+    if(!time)
+        return 0;
+
+    const [h,m] =
+        time.split(":").map(Number);
+
+    return h * 60 + m;
+
+}
+
+
+function durationMinutes(start,end){
+
+    let diff =
+        timeToMinutes(end) -
+        timeToMinutes(start);
+
+    if(diff < 0)
+        diff += 1440;
+
+    return diff;
+
+}
+
+
+function sleepDuration(start,end){
+
+    if(!start || !end)
+        return 0;
+
+    let diff =
+        timeToMinutes(end) -
+        timeToMinutes(start);
+
+    if(diff <= 0)
+        diff += 1440;
+
+    return diff;
+
+}
+
+
+function formatHours(minutes){
+
+    const h =
+        Math.floor(minutes / 60);
+
+    const m =
+        minutes % 60;
+
+    if(m === 0)
+        return `${h}h`;
+
+    return `${h}h ${m}m`;
+
+}
+
+
+function createDayButtons(){
+
+    const box =
+        document.getElementById("days");
+
+    box.innerHTML = "";
+
+    days.forEach(day=>{
+
+        const button =
+            document.createElement("button");
+
+        button.className =
+            "day-btn " +
+            (
+                day === selectedDay
+                ? "active"
+                : ""
+            );
+
+        button.textContent =
+            day.slice(0,3);
+
+        button.onclick = ()=>{
+
+            selectedDay = day;
+
+            render();
+
+        };
+
+        box.appendChild(button);
+
+    });
+
+}
+
+
+function addActivity(){
+
+    const name =
+        document
+        .getElementById("activityName")
+        .value.trim();
+
+    const start =
+        document
+        .getElementById("activityStart")
+        .value;
+
+    const end =
+        document
+        .getElementById("activityEnd")
+        .value;
+
+    const priority =
+        document
+        .getElementById("activityPriority")
+        .value;
+
+    const reminder =
+        Number(
+            document
+            .getElementById("activityReminder")
+            .value
+        );
+
+    if(!name || !start || !end){
+
+        showToast(
+            "Please fill everything in."
+        );
+
+        return;
+
+    }
+
+    ensureDay(selectedDay);
+
+    activities[selectedDay].push({
+
+        name,
+        start,
+        end,
+        priority,
+        reminder,
+        created:Date.now()
+
+    });
+
+    saveData();
+
+    document
+        .getElementById("activityName")
+        .value = "";
+
+    render();
+
+    showToast(
+        "Activity added! 🚀"
+    );
+
+    if(reminder > 0)
+        requestNotificationPermission();
+
+}
+
+
+function quickAdd(name){
+
+    document
+        .getElementById("activityName")
+        .value = name;
+
+    document
+        .getElementById("activityStart")
+        .focus();
+
+}
+
+
+function deleteActivity(index){
+
+    if(!confirm(
+        "Delete this activity?"
+    ))
+        return;
+
+    activities[selectedDay]
+        .splice(index,1);
+
+    saveData();
+
+    render();
+
+}
+
+
+function openEdit(index){
+
+    const item =
+        activities[selectedDay][index];
+
+    editIndex = index;
+
+    document
+        .getElementById("editName")
+        .value = item.name;
+
+    document
+        .getElementById("editStart")
+        .value = item.start;
+
+    document
+        .getElementById("editEnd")
+        .value = item.end;
+
+    document
+        .getElementById("editPriority")
+        .value = item.priority;
+
+    document
+        .getElementById("editReminder")
+        .value = item.reminder;
+
+    document
+        .getElementById("editModal")
+        .classList.add("show");
+
+}
+
+
+function closeEdit(){
+
+    document
+        .getElementById("editModal")
+        .classList.remove("show");
+
+    editIndex = null;
+
+}
+
+
+function saveEdit(){
+
+    if(editIndex === null)
+        return;
+
+    activities[selectedDay][editIndex] = {
+
+        name:
+            document
+            .getElementById("editName")
+            .value.trim(),
+
+        start:
+            document
+            .getElementById("editStart")
+            .value,
+
+        end:
+            document
+            .getElementById("editEnd")
+            .value,
+
+        priority:
+            document
+            .getElementById("editPriority")
+            .value,
+
+        reminder:
+            Number(
+                document
+                .getElementById("editReminder")
+                .value
+            ),
+
+        created:
+            activities[selectedDay]
+            [editIndex].created
+
+    };
+
+    saveData();
+
+    closeEdit();
+
+    render();
+
+    showToast(
+        "Activity updated ✨"
+    );
+
+}
+
+
+function saveSleepRoutine(){
+
+    const start =
+        document
+        .getElementById("sleepStart")
+        .value;
+
+    const end =
+        document
+        .getElementById("sleepEnd")
+        .value;
+
+    const reminder =
+        Number(
+            document
+            .getElementById("sleepReminder")
+            .value
+        );
+
+    if(!start || !end){
+
+        showToast(
+            "Choose bedtime and wake-up time."
+        );
+
+        return;
+
+    }
+
+    sleepRoutine[selectedDay] = {
+
+        start,
+        end,
+        reminder
+
+    };
+
+    saveSleepData();
+
+    render();
+
+    showToast(
+        "Sleep routine saved 😴"
+    );
+
+    if(reminder > 0)
+        requestNotificationPermission();
+
+}
+
+
+function loadSleepForm(){
+
+    const routine =
+        sleepRoutine[selectedDay];
+
+    if(!routine){
+
+        document
+            .getElementById("sleepStart")
+            .value = "";
+
+        document
+            .getElementById("sleepEnd")
+            .value = "";
+
+        document
+            .getElementById("sleepReminder")
+            .value = "0";
+
+        return;
+
+    }
+
+    document
+        .getElementById("sleepStart")
+        .value =
+            routine.start;
+
+    document
+        .getElementById("sleepEnd")
+        .value =
+            routine.end;
+
+    document
+        .getElementById("sleepReminder")
+        .value =
+            routine.reminder || 0;
+
+}
+
+
+function renderSleep(){
+
+    const routine =
+        sleepRoutine[selectedDay];
+
+    const info =
+        document
+        .getElementById("sleepInfo");
+
+    if(!routine){
+
+        info.innerHTML =
+            "No sleep routine set for this day.";
+
+        return;
+
+    }
+
+    const minutes =
+        sleepDuration(
+            routine.start,
+            routine.end
+        );
+
+    info.innerHTML = `
+
+        🌙 <strong>
+            ${routine.start}
+        </strong>
+
+        →
+
+        🌅 <strong>
+            ${routine.end}
+        </strong>
+
+        &nbsp; • &nbsp;
+
+        💤 <strong>
+            ${formatHours(minutes)}
+        </strong>
+
+        ${
+            routine.start > routine.end
+            ? " • Overnight"
+            : ""
+        }
+
+    `;
+
+}
+
+
+function renderSchool(){
+
+    document
+        .getElementById("schoolDay")
+        .textContent =
+            selectedDay;
+
+    const list =
+        document
+        .getElementById("schoolList");
+
+    const lessons =
+        schoolSchedule[selectedDay] || [];
+
+    if(!lessons.length){
+
+        list.innerHTML =
+            `<div class="empty">
+                No school today 🎉
+            </div>`;
+
+        return;
+
+    }
+
+    list.innerHTML =
+        lessons.map(
+            (lesson,i)=>`
+
+            <div class="school-item">
+
+                <div class="school-number">
+                    ${i+1}
+                </div>
+
+                <div class="time">
+                    ${lessonTimes[i]}
+                </div>
+
+                <div>
+                    ${lesson}
+                </div>
+
+            </div>
+
+        `
+        ).join("");
+
+}
+
+
+function getSchoolMinutes(){
+
+    return (
+        schoolSchedule[selectedDay] || []
+    ).length * 45;
+
+}
+
+
+function renderStats(){
+
+    ensureDay(selectedDay);
+
+    const activityMinutes =
+        activities[selectedDay]
+        .reduce(
+            (sum,a)=>
+                sum +
+                durationMinutes(
+                    a.start,
+                    a.end
+                ),
+            0
+        );
+
+    const sleepMinutes =
+        sleepRoutine[selectedDay]
+        ?
+        sleepDuration(
+            sleepRoutine[selectedDay].start,
+            sleepRoutine[selectedDay].end
+        )
+        : 0;
+
+    const schoolMinutes =
+        getSchoolMinutes();
+
+    const free =
+        Math.max(
+            0,
+            1440 -
+            schoolMinutes -
+            activityMinutes -
+            sleepMinutes
+        );
+
+    document
+        .getElementById("schoolHours")
+        .textContent =
+            formatHours(
+                schoolMinutes
+            );
+
+    document
+        .getElementById("activityHours")
+        .textContent =
+            formatHours(
+                activityMinutes
+            );
+
+    document
+        .getElementById("sleepHours")
+        .textContent =
+            formatHours(
+                sleepMinutes
+            );
+
+    document
+        .getElementById("freeHours")
+        .textContent =
+            formatHours(
+                free
+            );
+
+    document
+        .getElementById("activityCount")
+        .textContent =
+            activities[selectedDay].length;
+
+}
+
+
+function priorityLabel(priority){
+
+    if(priority === "red")
+        return "🔴 Urgent";
+
+    if(priority === "yellow")
+        return "🟡 Not Important";
+
+    return "🟢 Mild";
+
+}
+
+
+function reminderLabel(minutes){
+
+    if(!minutes)
+        return "No reminder";
+
+    if(minutes === 1)
+        return "At start";
+
+    return `${minutes} min before`;
+
+}
+
+
+function renderActivities(){
+
+    ensureDay(selectedDay);
+
+    const box =
+        document
+        .getElementById("activities");
+
+    const list =
+        [...activities[selectedDay]]
+        .map(
+            (item,index)=>({
+                ...item,
+                index
+            })
+        )
+        .sort(
+            (a,b)=>
+                timeToMinutes(a.start) -
+                timeToMinutes(b.start)
+        );
+
+    if(!list.length){
+
+        box.innerHTML =
+            `<div class="empty">
+                No activities planned yet.
+            </div>`;
+
+        return;
+
+    }
+
+    box.innerHTML =
+        list.map(
+            item=>`
+
+        <div class="activity">
+
+            <div class="
+                priority
+                ${item.priority}
+            "></div>
+
+            <div class="time">
+                ${item.start}–${item.end}
+            </div>
+
+            <div class="activity-info">
+
+                <div class="activity-name">
+                    ${escapeHTML(item.name)}
+                </div>
+
+                <div class="activity-meta">
+                    ${priorityLabel(item.priority)}
+                    •
+                    ⏰
+                    ${reminderLabel(item.reminder)}
+                </div>
+
+            </div>
+
+            <div class="actions">
+
+                <button
+                    class="small-btn"
+                    onclick="openEdit(${item.index})">
+
+                    ✏️
+
+                </button>
+
+                <button
+                    class="small-btn"
+                    onclick="deleteActivity(${item.index})">
+
+                    🗑️
+
+                </button>
+
+            </div>
+
+        </div>
+
+    `
+        ).join("");
+
+}
+
+
+function renderTimeline(){
+
+    const box =
+        document
+        .getElementById("timeline");
+
+    let items = [];
+
+    const lessons =
+        schoolSchedule[selectedDay] || [];
+
+    lessons.forEach(
+        (lesson,i)=>{
+
+        const time =
+            lessonTimes[i]
+            .split("–")[0];
+
+        items.push({
+
+            type:"school",
+            time,
+            name:lesson,
+            extra:"🏫 School"
+
+        });
+
+    });
+
+
+    ensureDay(selectedDay);
+
+    activities[selectedDay]
+        .forEach(
+            (a,index)=>{
+
+        items.push({
+
+            type:"activity",
+            time:a.start,
+            name:a.name,
+            extra:`🎯 ${a.end}`,
+            index
+
+        });
+
+    });
+
+
+    const sleep =
+        sleepRoutine[selectedDay];
+
+    if(sleep){
+
+        items.push({
+
+            type:"sleep",
+            time:sleep.start,
+            name:"Sleep",
+            extra:`🌅 Wake ${sleep.end}`
+
+        });
+
+    }
+
+
+    items.sort(
+        (a,b)=>
+            timeToMinutes(a.time) -
+            timeToMinutes(b.time)
+    );
+
+
+    if(!items.length){
+
+        box.innerHTML =
+            `<div class="empty">
+                Nothing scheduled.
+            </div>`;
+
+        return;
+
+    }
+
+
+    box.innerHTML =
+        items.map(
+            item=>`
+
+        <div class="
+            timeline-item
+            ${item.type}
+        ">
+
+            <div class="timeline-label">
+                ${item.time}
+            </div>
+
+            <div style="flex:1">
+
+                <strong>
+                    ${escapeHTML(item.name)}
+                </strong>
+
+                <div class="activity-meta">
+                    ${item.extra}
+                </div>
+
+            </div>
+
+            ${
+                item.type === "sleep"
+                ?
+                `<span class="sleep-badge">
+                    💤 Sleep
+                </span>`
+                :
+                ""
+            }
+
+        </div>
+
+    `
+        ).join("");
+
+}
+
+
+function getNextActivity(){
+
+    const now =
+        new Date();
+
+    const currentMinutes =
+        now.getHours()*60 +
+        now.getMinutes() +
+        now.getSeconds()/60;
+
+    let upcoming = [];
+
+    ensureDay(selectedDay);
+
+    activities[selectedDay]
+        .forEach(a=>{
+
+        const start =
+            timeToMinutes(a.start);
+
+        if(start >= currentMinutes){
+
+            upcoming.push({
+
+                name:a.name,
+                start
+
+            });
+
+        }
+
+    });
+
+
+    upcoming.sort(
+        (a,b)=>
+            a.start-b.start
+    );
+
+
+    return upcoming[0] || null;
+
+}
+
+
+function updateCountdown(){
+
+    const next =
+        getNextActivity();
+
+    const name =
+        document
+        .getElementById("nextName");
+
+    const countdown =
+        document
+        .getElementById("countdown");
+
+    if(!next){
+
+        name.textContent =
+            "No more activities today 🎉";
+
+        countdown.textContent =
+            "--:--:--";
+
+        return;
+
+    }
+
+
+    name.textContent =
+        next.name;
+
+
+    const now =
+        new Date();
+
+    const target =
+        new Date();
+
+    target.setHours(
+        Math.floor(
+            next.start/60
+        ),
+        next.start%60,
+        0,
+        0
+    );
+
+
+    let diff =
+        target - now;
+
+    if(diff < 0)
+        diff = 0;
+
+
+    const totalSeconds =
+        Math.floor(diff/1000);
+
+
+    const h =
+        Math.floor(
+            totalSeconds/3600
+        );
+
+    const m =
+        Math.floor(
+            (totalSeconds%3600)/60
+        );
+
+    const s =
+        totalSeconds%60;
+
+
+    countdown.textContent =
+        `${String(h).padStart(2,"0")}:` +
+        `${String(m).padStart(2,"0")}:` +
+        `${String(s).padStart(2,"0")}`;
+
+}
+
+
+function renderWeeklyStats(){
+
+    const box =
+        document
+        .getElementById("weeklyStats");
+
+    let totalSleep = 0;
+
+    days.forEach(day=>{
+
+        if(sleepRoutine[day]){
+
+            totalSleep +=
+                sleepDuration(
+                    sleepRoutine[day].start,
+                    sleepRoutine[day].end
+                );
+
+        }
+
+    });
+
+
+    const maxSleep =
+        Math.max(
+            1,
+            ...days.map(
+                day =>
+                    sleepRoutine[day]
+                    ?
+                    sleepDuration(
+                        sleepRoutine[day].start,
+                        sleepRoutine[day].end
+                    )
+                    :
+                    0
+            )
+        );
+
+
+    box.innerHTML =
+        days.map(
+            day=>{
+
+        const minutes =
+            sleepRoutine[day]
+            ?
+            sleepDuration(
+                sleepRoutine[day].start,
+                sleepRoutine[day].end
+            )
+            :
+            0;
+
+
+        return `
+
+            <div class="week-row">
+
+                <strong>
+                    ${day.slice(0,3)}
+                </strong>
+
+                <div class="progress">
+
+                    <div
+                        style="
+                        width:
+                        ${(minutes/maxSleep)*100}%
+                        ">
+                    </div>
+
+                </div>
+
+                <span>
+                    ${
+                        minutes
+                        ?
+                        formatHours(minutes)
+                        :
+                        "—"
+                    }
+                </span>
+
+            </div>
+
+        `;
+
+    }).join("");
+
+
+    const daysWithSleep =
+        days.filter(
+            day =>
+                sleepRoutine[day]
+        ).length;
+
+
+    const average =
+        daysWithSleep
+        ?
+        totalSleep / daysWithSleep
+        :
+        0;
+
+
+    box.innerHTML += `
+
+        <div class="sleep-info">
+
+            💤 Weekly sleep:
+            <strong>
+                ${formatHours(totalSleep)}
+            </strong>
+
+            &nbsp; • &nbsp;
+
+            Average:
+            <strong>
+                ${formatHours(
+                    Math.round(average)
+                )}
+            </strong>
+
+        </div>
+
+    `;
+
+}
+
+
+function toggleTheme(){
+
+    document.body
+        .classList
+        .toggle("light");
+
+    const light =
+        document.body
+        .classList
+        .contains("light");
+
+    localStorage.setItem(
+        "myWeeklyPlannerTheme",
+        light
+        ? "light"
+        : "dark"
+    );
+
+    document
+        .getElementById("themeButton")
+        .textContent =
+            light
+            ? "☀️"
+            : "🌙";
+
+}
+
+
+function loadTheme(){
+
+    const theme =
+        localStorage.getItem(
+            "myWeeklyPlannerTheme"
+        );
+
+    if(theme === "light"){
+
+        document.body
+            .classList
+            .add("light");
+
+        document
+            .getElementById("themeButton")
+            .textContent =
+                "☀️";
+
+    }
+
+}
+
+
+async function requestNotificationPermission(){
+
+    if(!("Notification" in window))
+        return;
+
+    if(
+        Notification.permission ===
+        "default"
+    ){
+
+        try{
+
+            await Notification.requestPermission();
+
+        }catch(e){}
+
+    }
+
+}
+
+
+function sendNotification(title,body){
+
+    if(
+        "Notification" in window &&
+        Notification.permission ===
+        "granted"
+    ){
+
+        try{
+
+            new Notification(
+                title,
+                {
+                    body,
+                    icon:"./icon-192.png"
+                }
+            );
+
+        }catch(e){}
+
+    }
+
+}
+
+
+function checkReminders(){
+
+    const now =
+        new Date();
+
+    const today =
+        getTodayName();
+
+    ensureDay(today);
+
+    const current =
+        now.getHours()*60 +
+        now.getMinutes();
+
+    const dateKey =
+        now.toISOString()
+        .slice(0,10);
+
+
+    activities[today]
+        .forEach(
+            (a,index)=>{
+
+        if(!a.reminder)
+            return;
+
+
+        const target =
+            timeToMinutes(a.start) -
+            Number(a.reminder);
+
+
+        const key =
+            `${dateKey}-${today}-activity-${index}-${a.start}-${a.reminder}`;
+
+
+        if(
+            current >= target &&
+            current <= target + 1 &&
+            !remindedActivities[key]
+        ){
+
+            sendNotification(
+                `⏰ ${a.name}`,
+                a.reminder === 1
+                ?
+                "It's starting now!"
+                :
+                `Starts in ${a.reminder} minutes.`
+            );
+
+
+            remindedActivities[key] =
+                true;
+
+
+            localStorage.setItem(
+                "myWeeklyPlannerReminded",
+                JSON.stringify(
+                    remindedActivities
+                )
+            );
+
+        }
+
+    });
+
+
+    const sleep =
+        sleepRoutine[today];
+
+
+    if(
+        sleep &&
+        sleep.reminder
+    ){
+
+        const target =
+            timeToMinutes(
+                sleep.start
+            ) -
+            Number(sleep.reminder);
+
+
+        const key =
+            `${dateKey}-${today}-sleep-${sleep.start}-${sleep.reminder}`;
+
+
+        if(
+            current >= target &&
+            current <= target + 1 &&
+            !remindedActivities[key]
+        ){
+
+            sendNotification(
+                "😴 Sleep time approaching",
+                `Bedtime is at ${sleep.start}.`
+            );
+
+
+            remindedActivities[key] =
+                true;
+
+
+            localStorage.setItem(
+                "myWeeklyPlannerReminded",
+                JSON.stringify(
+                    remindedActivities
+                )
+            );
+
+        }
+
+    }
+
+}
+
+
+function showToast(message){
+
+    const toast =
+        document
+        .getElementById("toast");
+
+    toast.textContent =
+        message;
+
+    toast.classList.add("show");
+
+    setTimeout(
+        () =>
+            toast.classList.remove("show"),
+        2500
+    );
+
+}
+
+
+function escapeHTML(text){
+
+    return String(text)
+        .replaceAll(
+            "&",
+            "&amp;"
+        )
+        .replaceAll(
+            "<",
+            "&lt;"
+        )
+        .replaceAll(
+            ">",
+            "&gt;"
+        )
+        .replaceAll(
+            '"',
+            "&quot;"
+        )
+        .replaceAll(
+            "'",
+            "&#039;"
+        );
+
+}
+
+
+function render(){
+
+    createDayButtons();
+
+    renderStats();
+
+    renderSleep();
+
+    loadSleepForm();
+
+    renderSchool();
+
+    renderTimeline();
+
+    renderActivities();
+
+    renderWeeklyStats();
+
+    updateCountdown();
+
+}
+
+
+loadTheme();
+
+render();
+
+
+setInterval(
+    updateCountdown,
+    1000
+);
+
+
+setInterval(
+    checkReminders,
+    10000
+);
+
+
+if("serviceWorker" in navigator){
+
+    window.addEventListener(
+        "load",
+        ()=>{
+
+        navigator.serviceWorker
+            .register("./sw.js")
+            .then(
+                ()=>{
+                    console.log(
+                        "Service worker registered"
+                    );
+                }
+            )
+            .catch(
+                error=>{
+                    console.error(
+                        "Service worker registration failed:",
+                        error
+                    );
+                }
+            );
+
+    });
+
+}
+
+</script>
+
+</body>
+</html>
